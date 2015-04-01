@@ -4,13 +4,13 @@
 
 $workspaceName = 'camera.xcworkspace'
 $schemeName = 'camera'
-$releaseProvisioningProfileName = 'XC Ad Hoc: com.imaginarycloud.*'
+$releaseProvisioningProfileName = ''
 $nameOfTheSimulatorToTest = 'iPad Retina'
 	
 
 #you can create API key here: https://rink.hockeyapp.net/manage/auth_tokens
 
-$hockeyAppApiKey = '7d8cbb78027a4263b6bb7644a33a9491'
+$hockeyAppApiKey = ''
 
 
 
