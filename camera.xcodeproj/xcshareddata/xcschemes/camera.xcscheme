@@ -28,7 +28,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "454C1F5519E82E2500C81915"
+               BlueprintIdentifier = "453228F21AC2AD9A00A7EE76"
                BuildableName = "cameraTests.xctest"
                BlueprintName = "cameraTests"
                ReferencedContainer = "container:camera.xcodeproj">
@@ -46,7 +46,7 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "454C1F5519E82E2500C81915"
+               BlueprintIdentifier = "453228F21AC2AD9A00A7EE76"
                BuildableName = "cameraTests.xctest"
                BlueprintName = "cameraTests"
                ReferencedContainer = "container:camera.xcodeproj">
@@ -72,7 +72,8 @@
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
       allowLocationSimulation = "YES">
-      <BuildableProductRunnable>
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "454C1F4019E82E2500C81915"
@@ -90,7 +91,8 @@
       useCustomWorkingDirectory = "NO"
       buildConfiguration = "Release"
       debugDocumentVersioning = "YES">
-      <BuildableProductRunnable>
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "454C1F4019E82E2500C81915"
