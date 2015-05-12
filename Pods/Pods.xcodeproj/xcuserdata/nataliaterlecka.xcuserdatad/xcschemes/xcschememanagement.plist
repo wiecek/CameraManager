@@ -9,11 +9,6 @@
 			<key>isShown</key>
 			<false/>
 		</dict>
-		<key>Pods-cameraTests-Quick.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
 		<key>Pods-cameraTests.xcscheme</key>
 		<dict>
 			<key>isShown</key>
@@ -22,17 +17,12 @@
 	</dict>
 	<key>SuppressBuildableAutocreation</key>
 	<dict>
-		<key>03098993B86EADB31B473BE6</key>
+		<key>5450F12D18236260DBDC1426</key>
 		<dict>
 			<key>primary</key>
 			<true/>
 		</dict>
-		<key>13DE2AA1E6F090FB14C78F4F</key>
-		<dict>
-			<key>primary</key>
-			<true/>
-		</dict>
-		<key>63EE31CFA4335E182795B62C</key>
+		<key>F31DCF4BC1F75A477673D8D8</key>
 		<dict>
 			<key>primary</key>
 			<true/>

@@ -1,15 +1,6 @@
-//
-//  cameraTests.swift
-//  cameraTests
-//
-//  Created by Natalia Terlecka on 25/03/15.
-//  Copyright (c) 2015 imaginaryCloud. All rights reserved.
-//
 
 import UIKit
 import XCTest
-
-import Quick
 
 class cameraTests: XCTestCase {
     
