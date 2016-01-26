@@ -31,7 +31,7 @@ public enum CameraOutputQuality: Int {
 }
 
 /// Class for handling iDevices custom camera usage
-public class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate {
+public class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGestureRecognizerDelegate {
 
     // MARK: - Public properties
 
@@ -57,6 +57,9 @@ public class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate {
 
     /// Property to determine if manager should write the resources to the phone library. Default value is true.
     public var writeFilesToPhoneLibrary = true
+    
+    /// Property to determine if manager allows zoom. Default value is true.
+    public var enableZoom = true
 
     /// Property to determine if manager should follow device orientation. Default value is true.
     public var shouldRespondToOrientationChanges = true {
@@ -189,7 +192,9 @@ public class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate {
         }
         return NSURL(string: tempPath)!
         }()
-
+    
+    private var zoomScale: CGFloat = 1.0
+    private var beginZoomScale: CGFloat = 1.0
 
     // MARK: - CameraManager
 
@@ -435,9 +440,55 @@ public class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate {
             }
         }
     }
+    
+    // MARK: - UIGestureRecognizerDelegate
+    
+    public func gestureRecognizerShouldBegin(gestureRecognizer: UIGestureRecognizer) -> Bool {
+        
+        if gestureRecognizer.isKindOfClass(UIPinchGestureRecognizer) {
+            beginZoomScale = zoomScale;
+        }
+
+        return true
+    }
+
+    func _handlePinchGesture(pinchRecognizer: UIPinchGestureRecognizer) {
+        var allTouchesAreOnThePreviewLayer = true
+
+        let numTouches = pinchRecognizer.numberOfTouches();
+        var i: Int
+        
+        for i = 0; i < numTouches; ++i {
+            let location: CGPoint = pinchRecognizer.locationOfTouch(i, inView: embedingView)
+            
+            let convertedLocation: CGPoint = (embedingView?.convertPoint(location, fromCoordinateSpace: (embedingView?.superview)!))!
+
+            if ((embedingView?.pointInside(convertedLocation, withEvent: nil)) == nil) {
+                allTouchesAreOnThePreviewLayer = false
+                break
+            }
+        }
+        
+        if allTouchesAreOnThePreviewLayer {
+            
+            _updateZoomScale(pinchRecognizer.scale)
+            _applyZoomScale()
+        }
+    }
+    
 
     // MARK: - CameraManager()
 
+    private func _updateZoomScale(scale: CGFloat) {
+        let devices = AVCaptureDevice.devicesWithMediaType(AVMediaTypeVideo)
+        for  device in devices  {
+            let captureDevice = device as! AVCaptureDevice
+            if (captureDevice.position == AVCaptureDevicePosition.Back) {
+                zoomScale = max(1.0, min(beginZoomScale * scale, captureDevice.activeFormat.videoMaxZoomFactor))
+            }
+        }
+    }
+    
     private func _updateTorch(flashMode: CameraFlashMode) {
         captureSession?.beginConfiguration()
         let devices = AVCaptureDevice.devicesWithMediaType(AVMediaTypeVideo)
@@ -585,6 +636,10 @@ public class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate {
 
     private func _addPreviewLayerToView(view: UIView) {
         embedingView = view
+        
+        if(enableZoom) {
+            _setupZoom()
+        }
         dispatch_async(dispatch_get_main_queue(), { () -> Void in
             guard let _ = self.previewLayer else {
                 return
@@ -733,7 +788,7 @@ public class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate {
         }
         captureSession?.commitConfiguration()
     }
-
+    
     private func _updateCameraQualityMode(newCameraOutputQuality: CameraOutputQuality) {
         if let validCaptureSession = captureSession {
             var sessionPreset = AVCaptureSessionPresetLow
@@ -790,6 +845,23 @@ public class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate {
             _show(NSLocalizedString("Device setup error occured", comment:""), message: "\(outError)")
             return nil
         }
+    }
+    
+    private func _setupZoom() {
+        embedingView?.userInteractionEnabled = true
+        let pinchSelector: Selector = "_handlePinchGesture:"
+        let pinchToZoom: UIPinchGestureRecognizer = UIPinchGestureRecognizer(target: self, action: pinchSelector)
+        pinchToZoom.delegate = self
+        embedingView?.addGestureRecognizer(pinchToZoom)
+    }
+    
+    private func _applyZoomScale() {
+        let affineTransform = CGAffineTransformMakeScale(zoomScale, zoomScale)
+        
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.025)
+        embedingView?.transform = affineTransform
+        CATransaction.commit()
     }
 
     deinit {
