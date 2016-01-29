@@ -142,6 +142,7 @@ public class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGe
             if cameraIsSetup {
                 if cameraOutputMode != oldValue {
                     _setupOutputMode(cameraOutputMode, oldCameraOutputMode: oldValue)
+                    _setupMaxZoom()
                 }
             }
         }
@@ -191,11 +192,14 @@ public class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGe
             } catch { }
         }
         return NSURL(string: tempPath)!
-        }()
+    }()
     
+    
+    private var pinchToZoom: UIPinchGestureRecognizer?
     private var zoomScale: CGFloat = 1.0
     private var beginZoomScale: CGFloat = 1.0
-
+    private var maxZoomFactor: CGFloat = 1.0
+    
     // MARK: - CameraManager
 
     /**
@@ -345,7 +349,7 @@ public class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGe
                             }
                             imageCompletition(UIImage(data: imageData), nil)
                         }
-                    })
+                        })
                 })
             } else {
                 _show(NSLocalizedString("Capture session output mode video", comment:""), message: NSLocalizedString("I can't take any picture", comment:""))
@@ -456,10 +460,9 @@ public class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGe
         var allTouchesAreOnThePreviewLayer = true
 
         let numTouches = pinchRecognizer.numberOfTouches();
-        var i: Int
         
-        for i = 0; i < numTouches; ++i {
-            let location: CGPoint = pinchRecognizer.locationOfTouch(i, inView: embedingView)
+        for index in 0..<numTouches {
+            let location: CGPoint = pinchRecognizer.locationOfTouch(index, inView: embedingView)
             
             let convertedLocation: CGPoint = (embedingView?.convertPoint(location, fromCoordinateSpace: (embedingView?.superview)!))!
 
@@ -480,13 +483,7 @@ public class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGe
     // MARK: - CameraManager()
 
     private func _updateZoomScale(scale: CGFloat) {
-        let devices = AVCaptureDevice.devicesWithMediaType(AVMediaTypeVideo)
-        for  device in devices  {
-            let captureDevice = device as! AVCaptureDevice
-            if (captureDevice.position == AVCaptureDevicePosition.Back) {
-                zoomScale = max(1.0, min(beginZoomScale * scale, captureDevice.activeFormat.videoMaxZoomFactor))
-            }
-        }
+        zoomScale = max(1.0, min(beginZoomScale * scale, maxZoomFactor))
     }
     
     private func _updateTorch(flashMode: CameraFlashMode) {
@@ -550,6 +547,9 @@ public class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGe
             captureSession?.addOutput(stillImageOutput)
             captureSession?.commitConfiguration()
         }
+        
+        stillImageOutput!.connectionWithMediaType(AVMediaTypeVideo)?.videoScaleAndCropFactor = zoomScale
+        
         return stillImageOutput!
     }
 
@@ -557,7 +557,7 @@ public class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGe
         var currentConnection: AVCaptureConnection?;
         switch cameraOutputMode {
         case .StillImage:
-            currentConnection = stillImageOutput?.connectionWithMediaType(AVMediaTypeVideo)
+            currentConnection = _getStillImageOutput().connectionWithMediaType(AVMediaTypeVideo)
         case .VideoOnly, .VideoWithMic:
             currentConnection = _getMovieOutput().connectionWithMediaType(AVMediaTypeVideo)
         }
@@ -604,6 +604,7 @@ public class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGe
                 validCaptureSession.beginConfiguration()
                 validCaptureSession.sessionPreset = AVCaptureSessionPresetHigh
                 self._updateCameraDevice(self.cameraDevice)
+                self._setupPinchToZoom()
                 self._setupOutputs()
                 self._setupOutputMode(self.cameraOutputMode, oldCameraOutputMode: nil)
                 self._setupPreviewLayer()
@@ -637,9 +638,6 @@ public class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGe
     private func _addPreviewLayerToView(view: UIView) {
         embedingView = view
         
-        if(enableZoom) {
-            _setupZoom()
-        }
         dispatch_async(dispatch_get_main_queue(), { () -> Void in
             guard let _ = self.previewLayer else {
                 return
@@ -668,7 +666,20 @@ public class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGe
             return .NoDeviceFound
         }
     }
-
+    
+    private func _setupMaxZoom() {
+        if cameraDevice == .Back {
+            if let maxZoom = backCameraDevice?.activeFormat.videoMaxZoomFactor {
+                maxZoomFactor = maxZoom
+            }
+        }
+        else {
+            if let maxZoom = frontCameraDevice?.activeFormat.videoMaxZoomFactor {
+                maxZoomFactor = maxZoom
+            }
+        }
+    }
+    
     private func _setupOutputMode(newCameraOutputMode: CameraOutputMode, oldCameraOutputMode: CameraOutputMode?) {
         captureSession?.beginConfiguration()
 
@@ -678,6 +689,7 @@ public class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGe
             case .StillImage:
                 if let validStillImageOutput = stillImageOutput {
                     captureSession?.removeOutput(validStillImageOutput)
+                    _removePinchToZoom()
                 }
             case .VideoOnly, .VideoWithMic:
                 if let validMovieOutput = movieOutput {
@@ -697,6 +709,7 @@ public class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGe
             }
             if let validStillImageOutput = stillImageOutput {
                 captureSession?.addOutput(validStillImageOutput)
+                _addPinchToZoom()
             }
         case .VideoOnly, .VideoWithMic:
             captureSession?.addOutput(_getMovieOutput())
@@ -847,12 +860,17 @@ public class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGe
         }
     }
     
-    private func _setupZoom() {
-        embedingView?.userInteractionEnabled = true
-        let pinchSelector: Selector = "_handlePinchGesture:"
-        let pinchToZoom: UIPinchGestureRecognizer = UIPinchGestureRecognizer(target: self, action: pinchSelector)
-        pinchToZoom.delegate = self
-        embedingView?.addGestureRecognizer(pinchToZoom)
+    private func _setupPinchToZoom() {
+        pinchToZoom = UIPinchGestureRecognizer(target: self, action: "_handlePinchGesture:")
+        pinchToZoom!.delegate = self
+    }
+    
+    private func _addPinchToZoom() {
+        embedingView?.addGestureRecognizer(pinchToZoom!)
+    }
+    
+    private func _removePinchToZoom() {
+        embedingView?.removeGestureRecognizer(pinchToZoom!)
     }
     
     private func _applyZoomScale() {
