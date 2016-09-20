@@ -189,13 +189,13 @@ public class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGe
     private var maxZoomScale    = CGFloat(1.0)
 
     private var tempFilePath: NSURL = {
-        let tempPath = NSURL(fileURLWithPath: NSTemporaryDirectory()).URLByAppendingPathComponent("tempMovie").URLByAppendingPathExtension("mp4").absoluteString
-        if NSFileManager.defaultManager().fileExistsAtPath(tempPath) {
+        let tempPath = NSURL(fileURLWithPath: NSTemporaryDirectory()).URLByAppendingPathComponent("tempMovie")!.URLByAppendingPathExtension("mp4")!.absoluteString
+        if NSFileManager.defaultManager().fileExistsAtPath(tempPath!) {
             do {
-                try NSFileManager.defaultManager().removeItemAtPath(tempPath)
+                try NSFileManager.defaultManager().removeItemAtPath(tempPath!)
             } catch { }
         }
-        return NSURL(string: tempPath)!
+        return NSURL(string: tempPath!)!
     }()
     
     
